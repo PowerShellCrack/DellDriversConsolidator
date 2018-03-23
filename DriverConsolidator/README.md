@@ -346,7 +346,9 @@ After many of hours trying to figure out how to filter the cab versions, i have 
     $CabCollection = $CabCollection_verchk
     Write-host "$($CabCollection.Count) drivers filtered for latest version" -ForegroundColor Cyan
 
-Not I only see 4 drivers in my collection. The only next thing to do is grab those drivers and copy them to another folder. This should drop 
+Not I only see 4 drivers in my collection. The only next thing to do is grab those drivers and copy them to another folder. This should drop the size down dramatically, eepecially if you don't include video drivers (which you should exclude becuse you should download jsut the three catalyst drivers from (ati,intel,nvidia)
+
+mine went down from 13gb to 3gb. Now the next thing to do is filter the drivers inf even further to grab only the latest....coming soon 
 
 
 	
