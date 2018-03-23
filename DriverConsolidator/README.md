@@ -1,3 +1,4 @@
+## Goal ##
 I am trying to compare Dell driver packs that were extracted into a folder ( a very large list) 
 
 The goal is to filter by operating system, model, Dell CAB version (A01, A02, etc), and architecture. 
@@ -20,7 +21,8 @@ I wrote a PowerShell script that will parse this folder structure (a small subse
 	\\share\drivers\9343-Win8.1-A04-HXWH4\9343\Win8.1\x64
 	\\share\drivers\E7470-win10-A07-WXGDV\E7470\win10\x64
 
-and built a PSobject like this:
+## Script Breakdown ##
+First grab all the folders and add it to a collection:
 
 	$scriptRoot = '\\share\drivers'
 	#grab only root folders
@@ -162,16 +164,21 @@ The count is 15 with all architectures
 
 Now I need to filter them. I am then comparing them with other arrays (set as constants:
 
-	#Specify which type of folders to look for based on Operating System
+	#Specify which type of folders to look for based on Operating System.
 	#Supported Values: Win7, Win8, Win8.1, Win10
 	$OSCheck = @('Win10')
 
-	#Specify which type of folders to look for based on architecture
+	#Specify which type of folders to look for based on architecture.
 	#Supported Values: x86,x64
 	$archCheck = @('x64')
 
 	#Break it down even further based on model.
-	$DellModels = @('E7450','E7470','E6530','E6540','9343')
+	$FilterByModel = $true 
+	$DellModels = @('E7470','E7450','E6530','E6540')
+
+	#search driver types
+	$FilterbyDriverCategory = $true
+	$DriverCategory = @('audio','chipset','communication','input','network','security','storage')
 
 Based on theses filters I should get:
 
@@ -246,30 +253,32 @@ I am able to filter OS, Arch and Model:
     $CabCollection = $CabCollection_archchk
     Write-host "$($CabCollection.Count) drivers filtered for specified architecture" -ForegroundColor Cyan
 
-	#Create new hashtable for temporary use
-	$CabCollection_modelchk = @()
-	Foreach ($driverSet in $CabCollection){ 
-		#filter by model
-		$ModelFound = Compare-Object $driverSet.Model $DellModels -IncludeEqual | Where-Object {$_.SideIndicator -eq "=="}
-		If($ModelFound){
-			#write-host $driverSet.FullPath
-			$CabTable_modelchk = New-Object -TypeName PSObject -Property ([ordered]@{
-					Model    = $driverSet.Model
-					OS       = $driverSet.OS
-					Ver      = $driverSet.Ver
-					Arch     = $driverSet.Arch
-					FullPath = $driverSet.FullPath
-				})
+    If ($FilterByModel){
+        #Create new hashtable for temporary use
+        $CabCollection_modelchk = @()
+        Foreach ($driverSet in $CabCollection){ 
+            #filter by model
+            $ModelFound = Compare-Object $driverSet.Model $DellModels -IncludeEqual | Where-Object {$_.SideIndicator -eq "=="}
+            If($ModelFound){
+                #write-host $driverSet.FullPath
+                $CabTable_modelchk = New-Object -TypeName PSObject -Property ([ordered]@{
+                        Model    = $driverSet.Model
+                        OS       = $driverSet.OS
+                        Ver      = $driverSet.Ver
+                        Arch     = $driverSet.Arch
+                        FullPath = $driverSet.FullPath
+                    })
 
-				$CabCollection_modelchk += $CabTable_modelchk
-		}  
-		
-	}
-	#Rebuild original collection
-	$CabCollection = $CabCollection_modelchk
-	Write-host "$($CabCollection.Count) drivers filtered for specified models" -ForegroundColor Cyan
+                    $CabCollection_modelchk += $CabTable_modelchk
+            }  
+            
+        }
+        #Rebuild original collection
+        $CabCollection = $CabCollection_modelchk
+        Write-host "$($CabCollection.Count) drivers filtered for specified models" -ForegroundColor Cyan
+    }
 
-This leaves me with 4 models, 1 of them having multiple versions of drivers. For the life of me, I can not figure out how to compare the Ver property in the collection and only keep the greater one. 
+This leaves me with 6 models, 1 of them having multiple versions of drivers. 
 
 	Model    : E6530
 	OS       : win10
@@ -307,10 +316,37 @@ This leaves me with 4 models, 1 of them having multiple versions of drivers. For
 	Arch     : x64
 	FullPath : \\share\drivers\E7470-win10-A07-WXGDV\E7470\win10\x64
 
-After many of hours trying to figure out how to filter the cab versions, i have figured it out, but fell there could be an easier way. here is my code to filter them
+After many of hours trying to figure out how to filter the cab versions, i have figured it out, but felt there could be an easier way. here is my code to filter them:
 
 
+    #Create new hashtable for temporary use
+    $CabCollection_verchk = @()
 
+    Foreach ($driverSet in ($CabCollection | Group-object Model | Where-Object {$_.Count -eq 1}) ){
+        $CabTable_verchk = New-Object -TypeName PSObject -Property ([ordered]@{
+            Model    = $driverSet.Group.Model
+            OS       = $driverSet.Group.OS
+            Ver      = $driverSet.Group.Ver
+            Arch     = $driverSet.Group.Arch
+            FullPath = $driverSet.Group.FullPath
+        })
+
+        $CabCollection_verchk += $CabTable_verchk
+    }
+
+    Foreach ($driverSet in ($CabCollection | Group-object Model | Where-Object {$_.Count -gt 1}) ){
+        $SimilarModels = $driverSet | Foreach {$_.Group}
+        $LatestVersion = ($SimilarModels.ver | measure -Maximum | Select -First 1).Maximum
+        Foreach ($Model in ($SimilarModels | Where-Object {$_.Ver -eq $LatestVersion}) ){
+            $CabCollection_verchk += $Model
+        }
+    }
+
+    #Rebuild original collection
+    $CabCollection = $CabCollection_verchk
+    Write-host "$($CabCollection.Count) drivers filtered for latest version" -ForegroundColor Cyan
+
+Not I only see 4 drivers in my collection. The only next thing to do is grab those drivers and copy them to another folder. This should drop 
 
 
 	
