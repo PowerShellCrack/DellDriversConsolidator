@@ -1,2 +1,0 @@
-# DellDriverScripts
-Dell Driver Consolidator
