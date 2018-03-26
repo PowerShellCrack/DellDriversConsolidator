@@ -57,7 +57,6 @@ $Dated = (Get-Date -Format yyyyMMdd)
 [string]$scriptRoot = Split-Path -Path $scriptPath -Parent
 [string]$invokingScript = (Get-Variable -Name 'MyInvocation').Value.ScriptName
 
-$scriptRoot = '\\filer\s3isoftware\Software\drivers\DriverConsolidatorTest'
 #Get required folder and File paths
 [string]$AllDriversPath = Join-Path -Path $scriptRoot -ChildPath 'AllDrivers'
 [string]$AIODriversPath = Join-Path -Path $scriptRoot -ChildPath 'AIODrivers'
